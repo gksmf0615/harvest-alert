@@ -1,0 +1,22 @@
+name: Harvest Alert
+on:
+  schedule:
+    - cron: '30 21 * * *' # 한국시간 매일 아침 6시 30분 실행
+  workflow_dispatch: # 직접 실행 버튼 활성화
+
+jobs:
+  run_alert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install yfinance pandas python-telegram-bot
+      - name: Run Alert
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: python alert.py
