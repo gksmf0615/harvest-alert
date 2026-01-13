@@ -5,12 +5,13 @@ import asyncio
 from telegram import Bot
 
 async def check_strategy():
-    # 1. 데이터 가져오기 (나스닥 100 지수 추종 QQQ)
-    qqq = yf.download('QQQ', period='200d', auto_adjust=True)['Close']
-    today_p = float(qqq.iloc[-1])
-    ma150 = float(qqq.rolling(window=150).mean().iloc[-1])
-    ma50 = float(qqq.rolling(window=50).mean().iloc[-1])
-    ath = float(qqq.max())
+    # 1. 데이터 가져오기 (경고 방지용 .item() 추가)
+    qqq_data = yf.download('QQQ', period='250d', auto_adjust=True)['Close']
+    
+    today_p = qqq_data.iloc[-1].item()
+    ma150 = qqq_data.rolling(window=150).mean().iloc[-1].item()
+    ma50 = qqq_data.rolling(window=50).mean().iloc[-1].item()
+    ath = qqq_data.max().item()
     mdd = (today_p - ath) / ath
 
     # 2. 메시지 조립
@@ -24,9 +25,14 @@ async def check_strategy():
         msg += "📢 오늘 적립일이면? [QQQ]를 사세요! (Peace)"
         if today_p < ma50: msg += "\n🛡️ 주의: 50일선 이탈! 레버리지는 QQQ로 대피!"
 
-    # 3. 텔레그램 발송 (금고에서 열쇠를 꺼내옵니다)
-    token = os.environ['TELEGRAM_TOKEN']
-    chat_id = os.environ['CHAT_ID']
+    # 3. 텔레그램 발송
+    token = os.environ.get('TELEGRAM_TOKEN', '').strip()
+    chat_id = os.environ.get('CHAT_ID', '').strip()
+    
+    if not token or not chat_id:
+        print("에러: 토큰이나 ID가 설정되지 않았습니다.")
+        return
+
     await Bot(token=token).send_message(chat_id=chat_id, text=msg)
 
 if __name__ == "__main__":
