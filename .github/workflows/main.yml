@@ -1,7 +1,7 @@
 name: Harvest Alert
 on:
   schedule:
-    - cron: '30 21 * * *' # 한국시간 매일 아침 6시 30분 실행
+    - cron: '30 23 * * *' # 한국시간 매일 아침 6시 30분 실행
   workflow_dispatch: # 직접 실행 버튼 활성화
 
 jobs:
