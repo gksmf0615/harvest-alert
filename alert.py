@@ -5,21 +5,24 @@ import asyncio
 from telegram import Bot
 
 async def check_strategy():
-    # 1. 데이터 가져오기 (충분한 분석을 위해 250일치)
-    # 환율 정보를 함께 가져와서 원화 환산 가격도 참고할 수 있게 했습니다.
-    tickers = ['QQQ', 'USDKRW=X']
-    data = yf.download(tickers, period='250d', auto_adjust=True)['Close']
+    # 1. 데이터 가져오기 (각각 따로 가져오는 것이 가장 안전합니다)
+    qqq_ticker = yf.Ticker("QQQ")
+    data = qqq_ticker.history(period="250d")
     
-    today_p = data['QQQ'].iloc[-1].item()
-    fx = data['USDKRW=X'].iloc[-1].item()
+    # 환율 데이터
+    fx_data = yf.Ticker("USDKRW=X").history(period="5d")
+    
+    # 데이터 추출 (NaN 방지를 위해 마지막 유효값 사용)
+    today_p = data['Close'].iloc[-1]
+    fx = fx_data['Close'].iloc[-1]
     
     # 지표 계산
-    ma150 = data['QQQ'].rolling(window=150).mean().iloc[-1].item()
-    ma50 = data['QQQ'].rolling(window=50).mean().iloc[-1].item()
-    ath = data['QQQ'].max().item()
+    ma150 = data['Close'].rolling(window=150).mean().iloc[-1]
+    ma50 = data['Close'].rolling(window=50).mean().iloc[-1]
+    ath = data['Close'].max()
     mdd = (today_p - ath) / ath
 
-    # 2. 메시지 조립 (상태 및 가격)
+    # 2. 메시지 조립
     status = "📈 150일선 위 (평화)" if today_p > ma150 else "📉 150일선 아래 (축적)"
     msg = f"📜 [하베스트&스택] 정밀 보고\n\n"
     msg += f"현재가: ${today_p:.2f} (환율: {fx:.1f}원)\n"
@@ -27,22 +30,21 @@ async def check_strategy():
     msg += f"MDD: {mdd*100:.2f}%\n"
     msg += f"------------------------\n"
 
-    # 3. [Stacking & Switching] 행동 지침
+    # 3. [Stacking & Switching] 지침
     if today_p < ma150:
-        msg += "📢 오늘 적립일이면? [TQQQ]를 사세요! (Stacking)\n"
-        if mdd <= -0.35: msg += "⚠️ [SWITCH] QQQ 100% -> QLD 전환 시점!\n"
-        elif mdd <= -0.25: msg += "⚠️ [SWITCH] QQQ 50% -> QLD 전환 시점!\n"
-        elif mdd <= -0.15: msg += "⚠️ [SWITCH] QQQ 20% -> QLD 전환 시점!\n"
+        msg += "📢 오늘 적립일이면? [TQQQ]를 사세요!\n"
+        if mdd <= -0.35: msg += "⚠️ [SWITCH] QQQ 100% -> QLD 전환!\n"
+        elif mdd <= -0.25: msg += "⚠️ [SWITCH] QQQ 50% -> QLD 전환!\n"
+        elif mdd <= -0.15: msg += "⚠️ [SWITCH] QQQ 20% -> QLD 전환!\n"
     else:
-        msg += "📢 오늘 적립일이면? [QQQ]를 사세요! (Peace)\n"
+        msg += "📢 오늘 적립일이면? [QQQ]를 사세요!\n"
 
-    # 4. [Harvest] 수확 및 대피 신호 추가
-    # 신고가 돌파 여부 확인용
+    # 4. [Harvest] 수확 및 대피
     harvest_msg = ""
     if today_p >= ath * 1.10:
-        harvest_msg = "💰 [HARVEST] 신고가 대비 +10% 달성!\n레버리지(QLD/TQQQ) 절반을 수익실현하여 QQQ로 옮기세요!"
+        harvest_msg = "💰 [HARVEST] 신고가 대비 +10% 달성!\n레버리지 절반 수익실현 후 QQQ로!"
     elif today_p < ma50 and today_p > ma150:
-        harvest_msg = "🛡️ [EVACUATE] 50일선 이탈!\n레버리지 물량을 전량 QQQ로 안전하게 대피시키세요!"
+        harvest_msg = "🛡️ [EVACUATE] 50일선 이탈!\n레버리지 전량 QQQ로 대피하세요!"
 
     if harvest_msg:
         msg += f"------------------------\n"
@@ -52,9 +54,7 @@ async def check_strategy():
     token = os.environ.get('TELEGRAM_TOKEN', '').strip()
     chat_id = os.environ.get('CHAT_ID', '').strip()
     
-    if not token or not chat_id:
-        print("에러: 토큰이나 ID가 설정되지 않았습니다.")
-        return
+    if not token or not chat_id: return
 
     await Bot(token=token).send_message(chat_id=chat_id, text=msg)
 
