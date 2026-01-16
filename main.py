@@ -11,7 +11,7 @@ TQQQ_TICKER = "TQQQ"
 FAST_MA = 50
 SLOW_MA = 150
 BUFFER_PCT = 0.03
-RSI_LIMIT = 75
+RSI_LIMIT = 70
 
 # 텔레그램 설정 (GitHub Secrets)
 BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
